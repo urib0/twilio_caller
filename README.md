@@ -66,6 +66,8 @@ python app.py --check          # 設定を検証し、今後 14 日分の予定�
 sudo systemctl restart twilio-caller
 ```
 
+ラズパイ上では `.env` を読み込ませる必要がある（[7. 更新・設定変更](#7-更新設定変更) 参照）。
+
 ## セットアップ（Raspberry Pi / Debian 12）
 
 ### 1. uv と Python 3.13 を用意
@@ -76,20 +78,30 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ### 2. 配置
 
-```bash
-sudo mkdir -p /opt/twilio_caller
-sudo rsync -a --exclude .git --exclude .venv ./ /opt/twilio_caller/
+clone してから `/opt` へ移動する。
 
+```bash
+git clone git@github.com:urib0/twilio_caller.git
+sudo mv twilio_caller /opt/twilio_caller
+
+# 実行用のシステムユーザーを作り、所有権を移す
 sudo useradd --system --home /opt/twilio_caller --shell /usr/sbin/nologin twilio
 sudo chown -R twilio:twilio /opt/twilio_caller
 ```
 
+`.git` はそのまま残しておいてよい（`git pull` で更新できる）。systemd 側は `ReadWritePaths=/opt/twilio_caller` を指定してあるので動作に影響しない。
+
 ### 3. 依存関係をインストール
+
+`.venv` と `.env` は `.gitignore` 済みで clone には含まれないため、ここで作る。
 
 ```bash
 cd /opt/twilio_caller
-sudo -u twilio uv sync --frozen   # /opt/twilio_caller/.venv が作られる
+uv sync --frozen                          # /opt/twilio_caller/.venv が作られる
+sudo chown -R twilio:twilio /opt/twilio_caller
 ```
+
+> uv をログインユーザーの `~/.local/bin` にインストールしている場合、`sudo -u twilio uv ...` では PATH が通らず失敗する。上のように自分のユーザーで `uv sync` してから `chown` し直すのが確実（絶対パスで `sudo -u twilio ~/.local/bin/uv sync --frozen --directory /opt/twilio_caller` としてもよい）。
 
 ### 4. 環境変数ファイル
 
@@ -131,6 +143,28 @@ systemctl status twilio-caller
 ```bash
 journalctl -u twilio-caller -f          # 追跡
 journalctl -u twilio-caller --since today
+```
+
+### 7. 更新・設定変更
+
+`.git` を残してあるので、リポジトリを更新して再起動するだけでよい。所有権を `twilio` に移したあとは自分のユーザーで書き込めなくなるため、pull の間だけ戻す。
+
+```bash
+cd /opt/twilio_caller
+sudo chown -R "$USER" /opt/twilio_caller   # 自分の SSH 鍵で pull するため一時的に戻す
+git pull
+uv sync --frozen                           # 依存が変わったときのみ
+sudo chown -R twilio:twilio /opt/twilio_caller
+sudo systemctl restart twilio-caller
+```
+
+`.env` と `.venv` は `.gitignore` 済みなので `git pull` で上書きされることはない。
+
+`schedules.toml` を編集したときは、再起動の前に `--check` で確認する。`.env`（`root:twilio` / 640）を読ませる必要があるので、読み込んでから実行する。
+
+```bash
+sudo bash -c 'set -a; . /opt/twilio_caller/.env; set +a; \
+  /opt/twilio_caller/.venv/bin/python /opt/twilio_caller/app.py --check'
 ```
 
 ## 開発・動作確認
