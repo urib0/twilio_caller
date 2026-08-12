@@ -1,0 +1,62 @@
+# 架電スケジュール定義
+#
+# [[schedule]] を並べるだけ、いくつでも追加できる。
+# 変更したら `python app.py --check` で確認し、`sudo systemctl restart twilio-caller`
+# で反映する (プロセスは起動時にこのファイルを読む)。
+#
+# キー:
+#   time     (必須) "HH:MM" (24時間表記)。TOML のローカル時刻 07:00:00 形式も可
+#   name             ログ表示用の名前。省略時は時刻から自動生成
+#   days             対象日。ここに挙げたもののいずれかに該当すれば対象 (OR 条件)。
+#                    省略時は毎日。指定できる値:
+#                      mon / tue / wed / thu / fri / sat / sun
+#                      holiday  … 日本の祝日 (振替休日・国民の休日を含む)
+#                      weekday  … mon〜fri の別名
+#                      weekend  … sat, sun の別名
+#                      all      … 全曜日の別名
+#   holidays         days のマッチ結果にさらに掛けるフィルタ (AND 条件)。
+#                      include (既定) … 祝日かどうかを問わない
+#                      exclude        … 祝日なら架電しない
+#                      only           … 祝日のときだけ架電する
+#   message          読み上げ文言。省略時は環境変数 CALLER_MESSAGE
+#   to               宛先番号。文字列または文字列の配列 (複数宛先に順次発信)。
+#                    省略時は環境変数 TWILIO_TO_NUMBER
+#   enabled          false にすると一時的に無効化 (既定 true)
+
+# 平日 (月〜金) の朝 7:00。祝日は鳴らさない
+[[schedule]]
+name = "weekday-morning"
+time = "07:00"
+days = ["mon", "tue", "wed", "thu", "fri"]
+holidays = "exclude"
+
+# 土日、および祝日は 11:00
+[[schedule]]
+name = "weekend-and-holiday"
+time = "11:00"
+days = ["sat", "sun", "holiday"]
+
+# 土曜だけ 9:00 にもう一度 (土曜は 9:00 と 11:00 の 2 回鳴る)
+[[schedule]]
+name = "saturday-extra"
+time = "09:00"
+days = ["sat"]
+
+# --- 記述例 (必要になったらコメントを外して使う) ------------------------------
+#
+# 毎月曜だけ別の文言で、複数の宛先に順次発信する例:
+#
+# [[schedule]]
+# name = "monday-reminder"
+# time = "20:00"
+# days = ["mon"]
+# message = "ゴミ出しの日です。"
+# to = ["+819012345678", "+819087654321"]
+#
+# 祝日だけ鳴らす例 (曜日を問わない):
+#
+# [[schedule]]
+# name = "holiday-only"
+# time = "10:00"
+# holidays = "only"
+# enabled = false

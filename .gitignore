@@ -1,0 +1,15 @@
+# 認証情報 (絶対にコミットしない)
+.env
+*.env
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# OS
+.DS_Store

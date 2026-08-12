@@ -1,0 +1,23 @@
+[project]
+name = "twilio-caller"
+version = "0.1.0"
+description = "スケジュールに従って Twilio 経由で自動架電する常駐デーモン (Raspberry Pi / Debian 12)"
+requires-python = ">=3.13"
+dependencies = [
+    "twilio>=9.4",
+    # 4.x は API 非互換のため 3 系に固定する
+    "apscheduler>=3.11,<4",
+    "jpholiday>=1.0",
+]
+
+# スケジュール定義の TOML は標準ライブラリの tomllib で読むため追加依存は不要。
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# app.py はリポジトリ直下のスクリプトなので import 用にパスを通す
+pythonpath = ["."]

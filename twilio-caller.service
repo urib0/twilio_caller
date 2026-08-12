@@ -1,0 +1,42 @@
+[Unit]
+Description=Twilio scheduled caller
+Documentation=https://www.twilio.com/docs/voice/api/call-resource
+# ラズパイは RTC を持たないため、NTP で時刻が合ってから起動させる
+After=network-online.target time-sync.target
+Wants=network-online.target time-sync.target
+
+[Service]
+Type=simple
+User=twilio
+Group=twilio
+WorkingDirectory=/opt/twilio_caller
+
+# 認証情報などはここから読み込む (root:twilio 所有 / chmod 640 にしておく)
+EnvironmentFile=/opt/twilio_caller/.env
+Environment=PYTHONUNBUFFERED=1
+Environment=TZ=Asia/Tokyo
+
+# -u と PYTHONUNBUFFERED でバッファリングを無効化し、journal に即時反映させる
+ExecStart=/opt/twilio_caller/.venv/bin/python -u /opt/twilio_caller/app.py
+
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=twilio-caller
+
+# --- 基本的なハードニング ---
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/twilio_caller
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target
